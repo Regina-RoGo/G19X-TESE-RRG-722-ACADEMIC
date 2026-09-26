@@ -1,0 +1,14 @@
+{% if customers %}
+    {% for customer in customers %}
+    <tr class="hover cursor-pointer" onclick="window.location.href='/customers/{{ customer.id }}'">
+        <td><a href="/customers/{{ customer.id }}" class="link link-primary">{{ customer.name }}</a></td>
+        <td>{{ customer.email or "-" }}</td>
+        <td>{{ customer.phone or "-" }}</td>
+        <td>{{ customer.company or "-" }}</td>
+    </tr>
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="4" class="text-center text-base-content/60 py-6">No se encontraron clientes.</td>
+    </tr>
+{% endif %}

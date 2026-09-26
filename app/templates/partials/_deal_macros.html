@@ -1,0 +1,36 @@
+{% macro stage_badge(stage) -%}
+{%- set badge_class = {
+    "PROSPECT": "badge-ghost",
+    "CONTACTED": "badge-info",
+    "PROPOSAL_SENT": "badge-warning",
+    "CLOSED_WON": "badge-success",
+    "CLOSED_LOST": "badge-error",
+} -%}
+<span class="badge badge-sm whitespace-nowrap {{ badge_class[stage.value] }}">{{ stage_labels[stage] }}</span>
+{%- endmacro %}
+
+{% macro deal_form_fields() %}
+<div class="form-control mb-3">
+    <label class="label"><span class="label-text">Título</span></label>
+    <input type="text" name="title" required maxlength="200" class="input input-bordered" placeholder="Ej. Renovación de licencias 2027">
+</div>
+<div class="grid grid-cols-2 gap-3 mb-3">
+    <div class="form-control">
+        <label class="label"><span class="label-text">Monto</span></label>
+        <input type="number" name="value" min="0" step="0.01" value="0" class="input input-bordered">
+    </div>
+    <div class="form-control">
+        <label class="label"><span class="label-text">Probabilidad (%)</span></label>
+        <input type="number" name="probability" min="0" max="100" step="1" value="10" class="input input-bordered">
+    </div>
+</div>
+<div class="form-control mb-3">
+    <label class="label"><span class="label-text">Etapa</span></label>
+    <select name="stage" class="select select-bordered">
+        {% for stage, label in stage_labels.items() %}
+        <option value="{{ stage.value }}">{{ label }}</option>
+        {% endfor %}
+    </select>
+    <label class="label"><span class="label-text-alt text-base-content/60">Ganado fija la probabilidad en 100 % y Perdido en 0 %.</span></label>
+</div>
+{% endmacro %}

@@ -1,0 +1,25 @@
+{% if suggestion %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div>
+        <h3 class="font-semibold mb-2">Próximos pasos</h3>
+        <ol class="list-decimal list-inside space-y-1 text-sm">
+            {% for step in suggestion.next_steps %}
+            <li>{{ step }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+    <div>
+        <h3 class="font-semibold mb-2">Estrategia de cierre</h3>
+        <p class="whitespace-pre-wrap text-sm">{{ suggestion.closing_strategy }}</p>
+    </div>
+</div>
+<p class="text-xs text-base-content/60 mt-3">
+    Generado el {{ suggestion.generated_at.strftime("%d/%m/%Y %H:%M") }}
+</p>
+{% elif error %}
+<div class="alert alert-error text-sm">{{ error }}</div>
+{% else %}
+<p class="text-base-content/60 text-sm">
+    Aún no se han generado sugerencias de venta para este cliente. Haga clic en "Obtener sugerencias de venta".
+</p>
+{% endif %}

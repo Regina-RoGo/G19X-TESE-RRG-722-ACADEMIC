@@ -1,0 +1,20 @@
+{% if summary %}
+    {% if summary.sentiment %}
+    <span class="badge mb-2 {{
+        'badge-success' if summary.sentiment == 'POSITIVO'
+        else 'badge-warning' if summary.sentiment == 'NEUTRAL'
+        else 'badge-error' if summary.sentiment == 'NEGATIVO'
+        else 'badge-outline'
+    }}">{{ summary.sentiment }}</span>
+    {% endif %}
+    <div class="whitespace-pre-wrap text-sm">{{ summary.content }}</div>
+    <p class="text-xs text-base-content/60 mt-2">
+        Generado el {{ summary.generated_at.strftime("%d/%m/%Y %H:%M") }}
+    </p>
+{% elif error %}
+    <div class="alert alert-error text-sm">{{ error }}</div>
+{% else %}
+    <p class="text-base-content/60 text-sm">
+        Aún no se ha generado un resumen para este cliente. Hacé clic en "Generar Resumen".
+    </p>
+{% endif %}

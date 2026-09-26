@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% from "partials/_deal_macros.html" import deal_form_fields %}
+
+{% block title %}{{ customer.name }} - CRM Inteligente{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/customers" class="btn btn-ghost btn-sm">&larr; Volver a clientes</a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="card bg-base-100 shadow-md lg:col-span-1">
+        <div class="card-body">
+            <h1 class="card-title">{{ customer.name }}</h1>
+            <p><span class="font-semibold">Email:</span> {{ customer.email or "-" }}</p>
+            <p><span class="font-semibold">Teléfono:</span> {{ customer.phone or "-" }}</p>
+            <p><span class="font-semibold">Empresa:</span> {{ customer.company or "-" }}</p>
+            <p class="text-sm text-base-content/60 mt-2">
+                Cliente desde {{ customer.created_at.strftime("%d/%m/%Y") }}
+            </p>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-md lg:col-span-2">
+        <div class="card-body">
+            <div class="flex justify-between items-center flex-wrap gap-2">
+                <h2 class="card-title">Resumen Ejecutivo (IA)</h2>
+                <div class="flex items-center gap-2">
+                    <span id="ai-summary-spinner" class="htmx-indicator loading loading-spinner loading-sm"></span>
+                    <button
+                        class="btn btn-primary btn-sm"
+                        hx-post="/fragments/customers/{{ customer.id }}/summarize"
+                        hx-target="#ai-summary-content"
+                        hx-swap="innerHTML"
+                        hx-indicator="#ai-summary-spinner"
+                        hx-disabled-elt="this"
+                    >
+                        Generar Resumen
+                    </button>
+                </div>
+            </div>
+            <div id="ai-summary-content" class="mt-2">
+                {% include "partials/ai_summary_result.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+    <div class="card bg-base-100 shadow-md lg:col-span-1">
+        <div class="card-body">
+            <h2 class="card-title">Nuevo deal</h2>
+            <form
+                hx-post="/fragments/customers/{{ customer.id }}/deals"
+                hx-target="#customer-deals-list"
+                hx-swap="innerHTML"
+                hx-disabled-elt="find button[type='submit']"
+                hx-on::before-request="document.getElementById('customer-deal-form-error').innerHTML = ''"
+                hx-on::after-request="if (event.detail.successful && !event.detail.xhr.getResponseHeader('HX-Retarget')) this.reset()"
+            >
+                {{ deal_form_fields() }}
+                <div id="customer-deal-form-error" class="mb-3"></div>
+                <button type="submit" class="btn btn-primary w-full">Crear deal</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-md lg:col-span-2">
+        <div class="card-body">
+            <div class="flex justify-between items-center gap-2">
+                <h2 class="card-title">Deals</h2>
+                <a href="/pipeline" class="btn btn-ghost btn-sm">Ver en Pipeline &rarr;</a>
+            </div>
+            <div id="customer-deals-list" class="mt-2">
+                {% include "partials/customer_deals_list.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card bg-base-100 shadow-md mt-6">
+    <div class="card-body">
+        <div class="flex justify-between items-center flex-wrap gap-2">
+            <div>
+                <h2 class="card-title">Sugerencias de venta (IA)</h2>
+                <p class="text-sm text-base-content/60">Próximos pasos y estrategia de cierre a partir de las interacciones y los deals activos.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="sales-suggestion-spinner" class="htmx-indicator loading loading-spinner loading-sm"></span>
+                <button
+                    class="btn btn-secondary btn-sm"
+                    hx-post="/fragments/customers/{{ customer.id }}/sales-suggestions"
+                    hx-target="#sales-suggestion-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#sales-suggestion-spinner"
+                    hx-disabled-elt="this"
+                >
+                    Obtener sugerencias de venta
+                </button>
+            </div>
+        </div>
+        <div id="sales-suggestion-content" class="mt-2">
+            {% include "partials/sales_suggestion_result.html" %}
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+    <div class="card bg-base-100 shadow-md lg:col-span-1">
+        <div class="card-body">
+            <h2 class="card-title">Nueva interacción</h2>
+            <form
+                hx-post="/fragments/customers/{{ customer.id }}/interactions"
+                hx-target="#interactions-list"
+                hx-swap="innerHTML"
+                hx-on::after-request="if(event.detail.successful) this.reset()"
+            >
+                <div class="form-control mb-3">
+                    <label class="label"><span class="label-text">Tipo</span></label>
+                    <select name="interaction_type_id" required class="select select-bordered">
+                        {% for type in interaction_types %}
+                        <option value="{{ type.id }}">{{ type.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-control mb-3">
+                    <label class="label"><span class="label-text">Notas</span></label>
+                    <textarea
+                        name="notes"
+                        required
+                        rows="4"
+                        class="textarea textarea-bordered"
+                        placeholder="Detalle de la interacción..."
+                    ></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full">Registrar interacción</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-md lg:col-span-2">
+        <div class="card-body">
+            <h2 class="card-title">Historial de interacciones</h2>
+            <div id="interactions-list" class="flex flex-col gap-3 mt-2">
+                {% include "partials/interactions_list.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

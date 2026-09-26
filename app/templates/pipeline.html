@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% from "partials/_deal_macros.html" import deal_form_fields %}
+
+{% block title %}Pipeline - CRM Inteligente{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center flex-wrap gap-2 mb-4">
+    <div>
+        <h1 class="text-2xl font-bold">Pipeline de ventas</h1>
+        <p class="text-sm text-base-content/60">Arrastre las tarjetas entre columnas para cambiar la etapa de un deal.</p>
+    </div>
+    <div class="flex items-center gap-2">
+        <span id="pipeline-spinner" class="htmx-indicator loading loading-spinner loading-sm"></span>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('deal-modal').showModal()">+ Nuevo Deal</button>
+    </div>
+</div>
+
+<div id="pipeline-error" class="mb-4" hidden>
+    <div role="alert" class="alert alert-error text-sm py-2"><span id="pipeline-error-text"></span></div>
+</div>
+
+<div id="pipeline-board" hx-ext="json-enc">
+    {% include "partials/pipeline_board.html" %}
+</div>
+
+<dialog id="deal-modal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-2">Nuevo Deal</h3>
+        {% if customers %}
+        <form
+            hx-post="/fragments/deals"
+            hx-target="#pipeline-board"
+            hx-swap="innerHTML"
+            hx-disabled-elt="find button[type='submit']"
+            hx-on::before-request="document.getElementById('deal-form-error').innerHTML = ''"
+            hx-on::after-request="if (event.detail.successful && !event.detail.xhr.getResponseHeader('HX-Retarget')) { this.reset(); document.getElementById('deal-modal').close(); }"
+        >
+            <div class="form-control mb-3">
+                <label class="label"><span class="label-text">Cliente</span></label>
+                <select name="customer_id" required class="select select-bordered">
+                    {% for customer in customers %}
+                    <option value="{{ customer.id }}">{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {{ deal_form_fields() }}
+            <div id="deal-form-error" class="mb-3"></div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('deal-modal').close()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear Deal</button>
+            </div>
+        </form>
+        {% else %}
+        <p class="mb-4">Primero registre un cliente para poder crear deals.</p>
+        <div class="modal-action">
+            <button type="button" class="btn" onclick="document.getElementById('deal-modal').close()">Cerrar</button>
+        </div>
+        {% endif %}
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    .deal-card.htmx-request { opacity: 0.5; }
+    .deal-list .deal-card ~ .deal-list-empty { display: none; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/json-enc.js"></script>
+<script>
+    (function () {
+        const errorBox = document.getElementById("pipeline-error");
+        const errorText = document.getElementById("pipeline-error-text");
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorBox.hidden = false;
+        }
+
+        function refreshBoard() {
+            // Vuelve a pintar el tablero con el estado real de la base
+            // (contadores, totales y probabilidad ajustada al cerrar un deal).
+            return htmx.ajax("GET", "/fragments/pipeline/board", {
+                target: "#pipeline-board",
+                swap: "innerHTML",
+                indicator: "#pipeline-spinner",
+            });
+        }
+
+        function initBoard(root) {
+            root.querySelectorAll(".deal-list").forEach(function (list) {
+                if (list.dataset.sortableReady) return;
+                list.dataset.sortableReady = "true";
+                Sortable.create(list, {
+                    group: "pipeline",
+                    sort: false,
+                    animation: 150,
+                    draggable: ".deal-card",
+                    ghostClass: "opacity-40",
+                    // Arrastre con eventos de puntero en vez del DnD nativo de HTML5:
+                    // comportamiento consistente entre navegadores y compatible con touch.
+                    forceFallback: true,
+                    onEnd: function (evt) {
+                        if (evt.from === evt.to) return;
+                        errorBox.hidden = true;
+                        htmx.ajax("PATCH", "/api/deals/" + evt.item.dataset.dealId + "/stage", {
+                            source: evt.item,
+                            values: { stage: evt.to.dataset.stage },
+                            swap: "none",
+                        });
+                    },
+                });
+            });
+        }
+
+        document.body.addEventListener("htmx:afterRequest", function (evt) {
+            const config = evt.detail.requestConfig;
+            if (!config || config.verb !== "patch" || !config.path.startsWith("/api/deals/")) return;
+
+            if (!evt.detail.successful) {
+                const status = evt.detail.xhr.status;
+                let message = "No se pudo mover el deal. Intente nuevamente.";
+                if (status === 401) {
+                    message = "Su sesión expiró. Vuelva a iniciar sesión.";
+                } else {
+                    try {
+                        const detail = JSON.parse(evt.detail.xhr.responseText).detail;
+                        if (typeof detail === "string") message = detail;
+                    } catch (e) { /* respuesta sin JSON: se usa el mensaje genérico */ }
+                }
+                showError(message);
+            }
+            refreshBoard();
+        });
+
+        htmx.onLoad(initBoard);
+    })();
+</script>
+{% endblock %}

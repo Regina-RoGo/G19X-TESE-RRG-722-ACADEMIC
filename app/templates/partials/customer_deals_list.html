@@ -1,0 +1,29 @@
+{% from "partials/_deal_macros.html" import stage_badge %}
+{% if deals %}
+<div class="overflow-x-auto">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Deal</th>
+                <th class="text-right">Monto</th>
+                <th>Etapa</th>
+                <th class="text-right">Prob.</th>
+                <th>Actualizado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for deal in deals %}
+            <tr>
+                <td class="font-medium">{{ deal.title }}</td>
+                <td class="text-right whitespace-nowrap">{{ deal.value | money }}</td>
+                <td>{{ stage_badge(deal.stage) }}</td>
+                <td class="text-right">{{ deal.probability }} %</td>
+                <td class="whitespace-nowrap text-base-content/60">{{ deal.updated_at.strftime("%d/%m/%Y") }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-base-content/60">Este cliente aún no tiene deals.</p>
+{% endif %}

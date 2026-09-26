@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar sesión - CRM Inteligente{% endblock %}
+
+{% block content %}
+<div class="flex justify-center items-center min-h-[70vh]">
+    <div class="card w-full max-w-sm bg-base-100 shadow-md">
+        <div class="card-body">
+            <h1 class="card-title mb-4">Iniciar sesión</h1>
+
+            <form hx-post="/api/auth/login" hx-swap="none" hx-on::after-request="handleLoginResponse(event)">
+                <div class="form-control mb-3">
+                    <label class="label"><span class="label-text">Email</span></label>
+                    <input type="email" name="email" required autofocus
+                           class="input input-bordered" placeholder="admin@crm.local" />
+                </div>
+
+                <div class="form-control mb-3">
+                    <label class="label"><span class="label-text">Contraseña</span></label>
+                    <input type="password" name="password" required class="input input-bordered" />
+                </div>
+
+                <div id="login-error" class="text-error text-sm mb-2"></div>
+
+                <button type="submit" class="btn btn-primary w-full">Ingresar</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function handleLoginResponse(evt) {
+        if (evt.detail.successful) {
+            window.location.href = "/customers";
+            return;
+        }
+
+        let message = "No se pudo iniciar sesión.";
+        try {
+            const data = JSON.parse(evt.detail.xhr.responseText);
+            if (data.detail) message = data.detail;
+        } catch (e) {
+            // respuesta no era JSON, se usa el mensaje por defecto
+        }
+        document.getElementById("login-error").textContent = message;
+    }
+</script>
+{% endblock %}
