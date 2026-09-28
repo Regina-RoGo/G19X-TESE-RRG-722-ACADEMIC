@@ -1,0 +1,23 @@
+{% macro churn_badge(level, size="") -%}
+{%- set badge_class = {"BAJO": "badge-success", "MEDIO": "badge-warning", "ALTO": "badge-error"} -%}
+<span class="badge {{ size }} whitespace-nowrap {{ badge_class[level.value] }}">Churn {{ level.value | capitalize }}</span>
+{%- endmacro %}
+
+{% macro score_color(score) -%}
+{{ "text-success" if score >= 70 else "text-warning" if score >= 40 else "text-error" }}
+{%- endmacro %}
+
+{# Acepta el enum (tareas) o el string guardado en las sugerencias IA. #}
+{% macro priority_badge(priority) -%}
+{%- set key = priority.value if priority.value is defined else priority -%}
+{%- set badge_class = {"HIGH": "badge-error", "MEDIUM": "badge-warning", "LOW": "badge-ghost"} -%}
+<span class="badge badge-sm whitespace-nowrap {{ badge_class[key] }}">{{ priority_labels[key] }}</span>
+{%- endmacro %}
+
+{% macro tag_badge(tag) -%}
+<span class="badge {{ 'badge-secondary badge-outline' if tag.source.value == 'IA' else 'badge-neutral badge-outline' }} gap-1 whitespace-nowrap"
+      title="{{ 'Aplicado desde sugerencia IA' if tag.source.value == 'IA' else 'Agregado manualmente' }}">
+    {%- if tag.source.value == 'IA' %}<span class="text-[10px] font-bold">IA</span>{% endif %}
+    {{ tag.name }}
+</span>
+{%- endmacro %}

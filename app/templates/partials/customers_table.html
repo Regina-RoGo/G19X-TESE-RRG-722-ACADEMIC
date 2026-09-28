@@ -1,14 +1,27 @@
+{% from "partials/_insight_macros.html" import churn_badge, score_color, tag_badge %}
 {% if customers %}
     {% for customer in customers %}
+    {% set insight = insights.get(customer.id) %}
     <tr class="hover cursor-pointer" onclick="window.location.href='/customers/{{ customer.id }}'">
         <td><a href="/customers/{{ customer.id }}" class="link link-primary">{{ customer.name }}</a></td>
         <td>{{ customer.email or "-" }}</td>
         <td>{{ customer.phone or "-" }}</td>
         <td>{{ customer.company or "-" }}</td>
+        <td class="text-center font-semibold {{ score_color(insight.lead_score) if insight }}">
+            {{ insight.lead_score if insight else "-" }}
+        </td>
+        <td>{{ churn_badge(insight.churn_risk, "badge-sm") if insight else "-" }}</td>
+        <td>
+            <div class="flex flex-wrap gap-1">
+                {% for tag in customer.tags %}{{ tag_badge(tag) }}{% else %}-{% endfor %}
+            </div>
+        </td>
     </tr>
     {% endfor %}
 {% else %}
     <tr>
-        <td colspan="4" class="text-center text-base-content/60 py-6">No se encontraron clientes.</td>
+        <td colspan="7" class="text-center text-base-content/60 py-6">
+            {{ "Ningún cliente coincide con los filtros." if filtered else "No se encontraron clientes." }}
+        </td>
     </tr>
 {% endif %}

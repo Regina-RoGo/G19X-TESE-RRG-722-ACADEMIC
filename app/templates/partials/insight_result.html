@@ -1,0 +1,29 @@
+{% from "partials/_insight_macros.html" import churn_badge, score_color %}
+{% if insight %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="flex gap-4 items-start">
+        <div class="radial-progress {{ score_color(insight.lead_score) }} shrink-0"
+             style="--value:{{ insight.lead_score }}; --size:5rem; --thickness:0.5rem;"
+             role="progressbar" aria-valuenow="{{ insight.lead_score }}" aria-label="Lead score">
+            <span class="text-lg font-bold text-base-content">{{ insight.lead_score }}</span>
+        </div>
+        <div>
+            <h3 class="font-semibold">Lead Score <span class="text-base-content/60 font-normal text-sm">/ 100</span></h3>
+            <p class="text-sm mt-1">{{ insight.lead_score_justification }}</p>
+        </div>
+    </div>
+    <div>
+        <h3 class="font-semibold flex items-center gap-2">Riesgo de abandono {{ churn_badge(insight.churn_risk) }}</h3>
+        <p class="text-sm mt-1">{{ insight.churn_justification }}</p>
+    </div>
+</div>
+<p class="text-xs text-base-content/60 mt-3">
+    Análisis generado el {{ insight.generated_at.strftime("%d/%m/%Y %H:%M") }}
+</p>
+{% elif error %}
+<div class="alert alert-error text-sm">{{ error }}</div>
+{% else %}
+<p class="text-base-content/60 text-sm">
+    Aún no se ha generado un análisis predictivo para este cliente. Haga clic en "Generar Insights".
+</p>
+{% endif %}

@@ -1,0 +1,48 @@
+{% from "partials/_insight_macros.html" import tag_badge %}
+<div id="customer-tags" {% if oob %}hx-swap-oob="true"{% endif %}>
+    <h3 class="font-semibold mb-2">Tags de segmentación</h3>
+
+    <div class="flex flex-wrap items-center gap-2 mb-3">
+        {% for tag in tags %}
+        <span class="inline-flex items-center">
+            {{ tag_badge(tag) }}
+            {% if can_remove_tags %}
+            <button class="btn btn-ghost btn-xs btn-circle -ml-1" title="Quitar tag"
+                    aria-label="Quitar tag {{ tag.name }}"
+                    hx-delete="/fragments/customers/{{ customer_id }}/tags/{{ tag.id }}"
+                    hx-target="#customer-tags" hx-swap="outerHTML"
+                    hx-disabled-elt="this">✕</button>
+            {% endif %}
+        </span>
+        {% else %}
+        <span class="text-sm text-base-content/60">Sin tags aplicados.</span>
+        {% endfor %}
+    </div>
+
+    {% if available_tags %}
+    <div class="mb-3">
+        <p class="text-xs text-base-content/60 mb-1">Sugeridos por IA (clic para aplicar):</p>
+        <div class="flex flex-wrap gap-2">
+            {% for tag in available_tags %}
+            <button class="btn btn-xs btn-outline btn-secondary"
+                    hx-post="/fragments/customers/{{ customer_id }}/tags"
+                    hx-vals='{{ {"name": tag, "source": "IA"} | tojson }}'
+                    hx-target="#customer-tags" hx-swap="outerHTML"
+                    hx-disabled-elt="this">+ {{ tag }}</button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <form class="join w-full max-w-sm"
+          hx-post="/fragments/customers/{{ customer_id }}/tags"
+          hx-target="#customer-tags" hx-swap="outerHTML"
+          hx-disabled-elt="find button"
+          hx-on::before-request="document.getElementById('tag-form-error').innerHTML = ''">
+        <input type="hidden" name="source" value="MANUAL">
+        <input type="text" name="name" required maxlength="40" placeholder="Nuevo tag manual..."
+               class="input input-bordered input-sm join-item w-full">
+        <button type="submit" class="btn btn-sm btn-neutral join-item">Agregar</button>
+    </form>
+    <div id="tag-form-error" class="mt-2"></div>
+</div>

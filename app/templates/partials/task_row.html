@@ -1,0 +1,33 @@
+{% from "partials/_insight_macros.html" import priority_badge %}
+{% set done = task.status.value == "DONE" %}
+{% set overdue = not done and task.due_date and task.due_date < today() %}
+<tr id="task-row-{{ task.id }}" class="{{ 'opacity-60' if done else '' }}">
+    <td class="w-10">
+        <input type="checkbox" class="checkbox checkbox-success checkbox-sm"
+               {{ "checked" if done }}
+               aria-label="{{ 'Reabrir' if done else 'Completar' }} tarea {{ task.title }}"
+               title="{{ 'Reabrir tarea' if done else 'Marcar como completada' }}"
+               hx-post="/fragments/tasks/{{ task.id }}/status"
+               hx-vals='{{ {"status": "PENDING" if done else "DONE", "show_customer": show_customer} | tojson }}'
+               hx-target="closest tr" hx-swap="outerHTML"
+               hx-disabled-elt="this">
+    </td>
+    <td>
+        <div class="font-medium {{ 'line-through' if done }}">{{ task.title }}</div>
+        {% if task.description %}<div class="text-xs text-base-content/60">{{ task.description }}</div>{% endif %}
+    </td>
+    {% if show_customer %}
+    <td><a href="/customers/{{ task.customer_id }}" class="link link-primary">{{ task.customer.name }}</a></td>
+    {% endif %}
+    <td>{{ priority_badge(task.priority) }}</td>
+    <td class="whitespace-nowrap {{ 'text-error font-semibold' if overdue }}">
+        {% if task.due_date %}
+            {{ task.due_date.strftime("%d/%m/%Y") }}{% if overdue %} · vencida{% endif %}
+        {% else %}<span class="text-base-content/50">Sin fecha</span>{% endif %}
+    </td>
+    <td class="whitespace-nowrap">{{ task.assignee.full_name }}</td>
+    <td>
+        {% if done %}<span class="badge badge-success badge-sm">Completada</span>
+        {% else %}<span class="badge badge-ghost badge-sm">Pendiente</span>{% endif %}
+    </td>
+</tr>

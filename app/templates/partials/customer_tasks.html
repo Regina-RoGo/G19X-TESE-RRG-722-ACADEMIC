@@ -1,0 +1,106 @@
+{% from "partials/_insight_macros.html" import priority_badge %}
+<div id="customer-tasks" class="grid grid-cols-1 lg:grid-cols-3 gap-6" {% if oob %}hx-swap-oob="true"{% endif %}>
+    <div class="lg:col-span-1">
+        <h3 class="font-semibold mb-2">Nueva tarea</h3>
+        <form hx-post="/fragments/customers/{{ customer_id }}/tasks"
+              hx-target="#customer-tasks" hx-swap="outerHTML"
+              hx-disabled-elt="find button[type='submit']"
+              hx-on::before-request="document.getElementById('task-form-error').innerHTML = ''">
+            <div class="form-control mb-2">
+                <label class="label py-1"><span class="label-text">Título</span></label>
+                <input type="text" name="title" required maxlength="200" class="input input-bordered input-sm"
+                       placeholder="Ej. Enviar propuesta revisada">
+            </div>
+            <div class="form-control mb-2">
+                <label class="label py-1"><span class="label-text">Descripción (opcional)</span></label>
+                <textarea name="description" rows="2" maxlength="2000" class="textarea textarea-bordered textarea-sm"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text">Prioridad</span></label>
+                    <select name="priority" class="select select-bordered select-sm">
+                        {% for value, label in priority_labels.items() %}
+                        <option value="{{ value }}" {{ "selected" if value == "MEDIUM" }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text">Vence</span></label>
+                    <input type="date" name="due_date" class="input input-bordered input-sm">
+                </div>
+            </div>
+            <div class="form-control mb-2">
+                <label class="label py-1"><span class="label-text">Deal (opcional)</span></label>
+                <select name="deal_id" class="select select-bordered select-sm">
+                    <option value="">— Ninguno —</option>
+                    {% for deal in open_deals %}
+                    <option value="{{ deal.id }}">{{ deal.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if assignable_users %}
+            <div class="form-control mb-2">
+                <label class="label py-1"><span class="label-text">Asignar a</span></label>
+                <select name="assigned_to" class="select select-bordered select-sm">
+                    {% for user in assignable_users %}
+                    <option value="{{ user.id }}" {{ "selected" if user.id == current_user.id }}>{{ user.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div id="task-form-error" class="mb-2"></div>
+            <button type="submit" class="btn btn-primary btn-sm w-full">Crear tarea</button>
+        </form>
+    </div>
+
+    <div class="lg:col-span-2">
+        {% if suggested_tasks %}
+        <div class="rounded-box border border-secondary/30 bg-secondary/5 p-3 mb-4">
+            <p class="text-sm font-semibold mb-2">Tareas sugeridas por IA</p>
+            <ul class="flex flex-col gap-2">
+                {% for suggestion in suggested_tasks %}
+                <li class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-2 text-sm min-w-0">
+                        <span class="shrink-0">{{ priority_badge(suggestion.priority) }}</span>
+                        <span>
+                            <span class="{{ 'line-through text-base-content/50' if suggestion.created }}">{{ suggestion.title }}</span>
+                            <span class="text-xs text-base-content/60 whitespace-nowrap">· vence {{ suggestion.due_label }}</span>
+                        </span>
+                    </div>
+                    {% if suggestion.created %}
+                    <span class="badge badge-success badge-sm shrink-0">✓ Creada</span>
+                    {% else %}
+                    <button class="btn btn-xs btn-secondary shrink-0"
+                            hx-post="/fragments/customers/{{ customer_id }}/tasks"
+                            hx-vals='{{ {"title": suggestion.title, "priority": suggestion.priority, "due_date": suggestion.due_date} | tojson }}'
+                            hx-target="#customer-tasks" hx-swap="outerHTML"
+                            hx-disabled-elt="this">Crear tarea</button>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <h3 class="font-semibold mb-2">Tareas del cliente</h3>
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Tarea</th>
+                        <th>Prioridad</th>
+                        <th>Vence</th>
+                        <th>Asignada a</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% with show_customer = False, empty_message = "Este cliente aún no tiene tareas." %}
+                    {% include "partials/tasks_table.html" %}
+                    {% endwith %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

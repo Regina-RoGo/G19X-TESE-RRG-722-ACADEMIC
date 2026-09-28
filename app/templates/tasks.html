@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Mis tareas - CRM Inteligente{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+    <h1 class="text-2xl font-bold">Mis tareas</h1>
+
+    <form id="task-filters" class="flex flex-wrap items-center gap-2"
+          hx-get="/fragments/tasks/table"
+          hx-trigger="change"
+          hx-target="#tasks-table-body"
+          hx-swap="innerHTML"
+          hx-indicator="#tasks-spinner">
+        <span id="tasks-spinner" class="htmx-indicator loading loading-spinner loading-sm"></span>
+        <select name="status_filter" class="select select-bordered select-sm" aria-label="Estado">
+            {% for value, label in status_filters.items() %}
+            <option value="{{ value }}" {{ "selected" if value == selected_status }}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="priority" class="select select-bordered select-sm" aria-label="Prioridad">
+            <option value="">Todas las prioridades</option>
+            {% for value, label in priority_labels.items() %}
+            <option value="{{ value }}" {{ "selected" if value == selected_priority }}>Prioridad {{ label | lower }}</option>
+            {% endfor %}
+        </select>
+        <select name="assigned" class="select select-bordered select-sm" aria-label="Asignado a">
+            <option value="me" {{ "selected" if selected_assigned == "me" }}>Asignadas a mí</option>
+            <option value="" {{ "selected" if selected_assigned == "" }}>Todos los usuarios</option>
+            {% for user in users if user.id != current_user.id %}
+            <option value="{{ user.id }}" {{ "selected" if selected_assigned == user.id | string }}>{{ user.full_name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="card bg-base-100 shadow-md">
+    <div class="card-body p-0 overflow-x-auto">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Tarea</th>
+                    <th>Cliente</th>
+                    <th>Prioridad</th>
+                    <th>Vence</th>
+                    <th>Asignada a</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="tasks-table-body">
+                {% include "partials/tasks_table.html" %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

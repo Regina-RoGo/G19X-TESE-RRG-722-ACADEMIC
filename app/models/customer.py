@@ -8,6 +8,9 @@ if TYPE_CHECKING:
     from app.models.ai_summary import AISummary
     from app.models.deal import Deal
     from app.models.sales_suggestion import SalesSuggestion
+    from app.models.customer_insight import CustomerInsight
+    from app.models.task import Task
+    from app.models.customer_tag import CustomerTag
 
 
 class Customer(SQLModel, table=True):
@@ -24,3 +27,9 @@ class Customer(SQLModel, table=True):
     ai_summaries: List["AISummary"] = Relationship(back_populates="customer")
     deals: List["Deal"] = Relationship(back_populates="customer")
     sales_suggestions: List["SalesSuggestion"] = Relationship(back_populates="customer")
+    insights: List["CustomerInsight"] = Relationship(back_populates="customer")
+    tasks: List["Task"] = Relationship(back_populates="customer")
+    tags: List["CustomerTag"] = Relationship(
+        back_populates="customer",
+        sa_relationship_kwargs={"order_by": "CustomerTag.name"},
+    )

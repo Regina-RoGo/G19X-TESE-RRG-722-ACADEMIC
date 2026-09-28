@@ -3,12 +3,13 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.dependencies import get_current_user_optional
+from app.core.templating import form_error, templates
+from app.models.customer_insight import ChurnRisk
 from app.models.deal import DealStage
 from app.models.user import User
 from app.repositories import (
@@ -16,11 +17,13 @@ from app.repositories import (
     interaction_type_repository,
     sales_suggestion_repository,
 )
+from app.routers import insight_pages
 from app.schemas.deal import DealCreate
 from app.schemas.interaction import InteractionCreate
 from app.services import (
     ai_service,
     customer_service,
+    customer_tag_service,
     dashboard_service,
     deal_service,
     health_service,
@@ -28,9 +31,6 @@ from app.services import (
 )
 
 router = APIRouter(tags=["pages"])
-templates = Jinja2Templates(directory="app/templates")
-templates.env.filters["money"] = lambda value: f"$ {value:,.2f}"
-templates.env.globals["stage_labels"] = deal_service.STAGE_LABELS
 
 
 @router.get("/")
@@ -63,21 +63,54 @@ def login_page(request: Request):
     return templates.TemplateResponse(request, "login.html", {})
 
 
+def _parse_churn(churn: Optional[str]) -> Optional[ChurnRisk]:
+    # Los <select> envían "" para "Todos": se trata como sin filtro en vez de un 422.
+    try:
+        return ChurnRisk(churn) if churn else None
+    except ValueError:
+        return None
+
+
+def _customers_table_context(
+    session: Session, q: Optional[str], tag: Optional[str], churn: Optional[str]
+) -> dict:
+    customers = customer_service.list_customers(
+        session,
+        search=q,
+        tag=customer_tag_service.normalize_tag_name(tag) if tag else None,
+        churn_risk=_parse_churn(churn),
+    )
+    return {
+        "customers": customers,
+        "insights": customer_service.get_latest_insights_map(session, customers),
+        "filtered": bool(q or tag or churn),
+    }
+
+
 @router.get("/customers", response_class=HTMLResponse)
 def customers_page(
     request: Request,
     q: Optional[str] = None,
+    tag: Optional[str] = None,
+    churn: Optional[str] = None,
     session: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     if current_user is None:
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    customers = customer_service.list_customers(session, search=q)
     return templates.TemplateResponse(
         request,
         "customers.html",
-        {"customers": customers, "query": q or "", "current_user": current_user},
+        {
+            **_customers_table_context(session, q, tag, churn),
+            "query": q or "",
+            "selected_tag": tag or "",
+            "selected_churn": churn or "",
+            "tag_names": customer_tag_service.list_tag_names(session),
+            "churn_levels": list(ChurnRisk),
+            "current_user": current_user,
+        },
     )
 
 
@@ -101,15 +134,18 @@ def export_customers_csv(
 def customers_table_fragment(
     request: Request,
     q: Optional[str] = None,
+    tag: Optional[str] = None,
+    churn: Optional[str] = None,
     session: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     if current_user is None:
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    customers = customer_service.list_customers(session, search=q)
     return templates.TemplateResponse(
-        request, "partials/customers_table.html", {"customers": customers}
+        request,
+        "partials/customers_table.html",
+        _customers_table_context(session, q, tag, churn),
     )
 
 
@@ -140,6 +176,9 @@ def customer_detail_page(
             "summary": summary,
             "deals": deals,
             "suggestion": suggestion,
+            **insight_pages.insight_context(session, customer_id),
+            **insight_pages.tags_context(session, customer_id, current_user),
+            **insight_pages.tasks_context(session, customer_id, current_user),
             "current_user": current_user,
         },
     )
@@ -215,17 +254,6 @@ def _create_deal_from_form(
     return None
 
 
-def _form_error(request: Request, message: str, target: str):
-    # El formulario apunta al tablero/lista; ante un error se redirige el swap
-    # a la alerta del propio formulario en vez de reemplazar el contenido.
-    response = templates.TemplateResponse(
-        request, "partials/form_error.html", {"error": message}
-    )
-    response.headers["HX-Retarget"] = target
-    response.headers["HX-Reswap"] = "innerHTML"
-    return response
-
-
 @router.get("/pipeline", response_class=HTMLResponse)
 def pipeline_page(
     request: Request,
@@ -276,7 +304,7 @@ def create_deal_fragment(
 
     error = _create_deal_from_form(session, title, customer_id, value, probability, stage)
     if error:
-        return _form_error(request, error, "#deal-form-error")
+        return form_error(request, error, "#deal-form-error")
 
     return templates.TemplateResponse(
         request, "partials/pipeline_board.html", {"columns": deal_service.get_pipeline(session)}
@@ -299,7 +327,7 @@ def create_customer_deal_fragment(
 
     error = _create_deal_from_form(session, title, customer_id, value, probability, stage)
     if error:
-        return _form_error(request, error, "#customer-deal-form-error")
+        return form_error(request, error, "#customer-deal-form-error")
 
     deals = deal_service.list_deals(session, customer_id=customer_id)
     return templates.TemplateResponse(

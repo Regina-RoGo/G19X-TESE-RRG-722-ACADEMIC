@@ -46,6 +46,45 @@
     </div>
 </div>
 
+<div class="card bg-base-100 shadow-md mt-6">
+    <div class="card-body">
+        <div class="flex justify-between items-center flex-wrap gap-2">
+            <div>
+                <h2 class="card-title">Analítica IA &amp; Insights</h2>
+                <p class="text-sm text-base-content/60">Lead scoring, riesgo de abandono y segmentación a partir del perfil, las interacciones y los deals.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="insights-spinner" class="htmx-indicator loading loading-spinner loading-sm"></span>
+                <button
+                    class="btn btn-accent btn-sm"
+                    hx-post="/fragments/customers/{{ customer.id }}/insights"
+                    hx-target="#insights-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#insights-spinner"
+                    hx-disabled-elt="this"
+                >
+                    Generar Insights
+                </button>
+            </div>
+        </div>
+        <div id="insights-content" class="mt-2">
+            {% include "partials/insight_result.html" %}
+        </div>
+        <div class="divider my-2"></div>
+        {% include "partials/customer_tags.html" %}
+    </div>
+</div>
+
+<div class="card bg-base-100 shadow-md mt-6">
+    <div class="card-body">
+        <div class="flex justify-between items-center gap-2 mb-2">
+            <h2 class="card-title">Tareas de seguimiento</h2>
+            <a href="/tasks" class="btn btn-ghost btn-sm">Mis tareas &rarr;</a>
+        </div>
+        {% include "partials/customer_tasks.html" %}
+    </div>
+</div>
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
     <div class="card bg-base-100 shadow-md lg:col-span-1">
         <div class="card-body">

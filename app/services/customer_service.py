@@ -1,26 +1,42 @@
 import csv
 import io
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app.models.customer import Customer
+from app.models.customer_insight import ChurnRisk, CustomerInsight
 from app.repositories import (
     ai_summary_repository,
+    customer_insight_repository,
     customer_repository,
+    customer_tag_repository,
     deal_repository,
     interaction_repository,
     sales_suggestion_repository,
+    task_repository,
 )
 from app.schemas.customer import CustomerCreate, CustomerUpdate
 
 
-def list_customers(session: Session, search: Optional[str] = None) -> List[Customer]:
-    if search:
-        return customer_repository.search(session, search)
-    return customer_repository.get_all(session)
+def list_customers(
+    session: Session,
+    search: Optional[str] = None,
+    tag: Optional[str] = None,
+    churn_risk: Optional[ChurnRisk] = None,
+) -> List[Customer]:
+    return customer_repository.filter_customers(
+        session, query=search, tag=tag, churn_risk=churn_risk
+    )
+
+
+def get_latest_insights_map(session: Session, customers: List[Customer]) -> Dict[int, CustomerInsight]:
+    """Último análisis IA de cada cliente listado (una sola consulta) → {customer_id: insight}."""
+    return customer_insight_repository.get_latest_by_customers(
+        session, [customer.id for customer in customers]
+    )
 
 
 def get_customer(session: Session, customer_id: int) -> Customer:
@@ -59,6 +75,12 @@ def delete_customer(session: Session, customer_id: int) -> None:
             "sugerencia de venta IA",
             "sugerencias de venta IA",
         ),
+        (
+            customer_insight_repository.count_by_customer(session, customer_id),
+            "análisis predictivo IA",
+            "análisis predictivos IA",
+        ),
+        (task_repository.count_by_customer(session, customer_id), "tarea", "tareas"),
     ]
     blockers = [f"{n} {singular if n == 1 else plural}" for n, singular, plural in related if n]
     if blockers:
@@ -72,6 +94,8 @@ def delete_customer(session: Session, customer_id: int) -> None:
         )
 
     try:
+        # Los tags son solo etiquetas: no bloquean el borrado, se eliminan con el cliente.
+        customer_tag_repository.delete_by_customer(session, customer_id)
         customer_repository.delete(session, customer)
     except IntegrityError:
         # Carrera: se asoció un registro entre la verificación y el borrado.

@@ -1,0 +1,11 @@
+{% if tasks %}
+    {% for task in tasks %}
+    {% include "partials/task_row.html" %}
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="{{ 7 if show_customer else 6 }}" class="text-center text-base-content/60 py-6">
+            {{ empty_message or "No hay tareas para los filtros seleccionados." }}
+        </td>
+    </tr>
+{% endif %}

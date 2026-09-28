@@ -17,6 +17,7 @@
             <a href="/" class="btn btn-ghost {{ 'btn-active' if request.url.path == '/' else '' }}">Dashboard</a>
             <a href="/customers" class="btn btn-ghost {{ 'btn-active' if request.url.path.startswith('/customers') else '' }}">Clientes</a>
             <a href="/pipeline" class="btn btn-ghost {{ 'btn-active' if request.url.path.startswith('/pipeline') else '' }}">Pipeline</a>
+            <a href="/tasks" class="btn btn-ghost {{ 'btn-active' if request.url.path.startswith('/tasks') else '' }}">Mis tareas</a>
         </div>
     </div>
 
