@@ -1,5 +1,7 @@
-from typing import List
+from datetime import date, datetime
+from typing import Dict, List
 
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, func, select
 
 from app.models.interaction import Interaction
@@ -35,5 +37,21 @@ def count_by_customer(session: Session, customer_id: int) -> int:
 
 
 def get_recent(session: Session, limit: int = 5) -> List[Interaction]:
-    statement = select(Interaction).order_by(Interaction.occurred_at.desc()).limit(limit)
+    # El dashboard muestra cliente y tipo de cada interacción: se cargan agrupados.
+    statement = (
+        select(Interaction)
+        .options(selectinload(Interaction.customer), selectinload(Interaction.interaction_type))
+        .order_by(Interaction.occurred_at.desc())
+        .limit(limit)
+    )
     return list(session.exec(statement).all())
+
+
+def count_by_day(session: Session, since: datetime) -> Dict[date, int]:
+    day = func.date(Interaction.occurred_at)
+    statement = (
+        select(day, func.count())
+        .where(Interaction.occurred_at >= since)
+        .group_by(day)
+    )
+    return dict(session.exec(statement).all())

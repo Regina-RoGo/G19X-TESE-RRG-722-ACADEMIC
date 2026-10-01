@@ -1,4 +1,5 @@
-from typing import List, Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, func, or_, select
@@ -6,6 +7,8 @@ from sqlmodel import Session, func, or_, select
 from app.models.customer import Customer
 from app.models.customer_insight import ChurnRisk, CustomerInsight
 from app.models.customer_tag import CustomerTag
+from app.models.deal import Deal, DealStage
+from app.models.interaction import Interaction
 from app.repositories import customer_insight_repository
 
 
@@ -26,6 +29,30 @@ def get_all(session: Session) -> List[Customer]:
 
 def count(session: Session) -> int:
     return session.exec(select(func.count()).select_from(Customer)).one()
+
+
+def count_active(session: Session, since: datetime) -> int:
+    """Clientes con alguna interacción desde `since` o con al menos un deal abierto."""
+    recent_contact = select(Interaction.customer_id).where(Interaction.occurred_at >= since)
+    open_deal = select(Deal.customer_id).where(
+        Deal.stage.not_in([DealStage.CLOSED_WON, DealStage.CLOSED_LOST])
+    )
+    statement = (
+        select(func.count())
+        .select_from(Customer)
+        .where(or_(Customer.id.in_(recent_contact), Customer.id.in_(open_deal)))
+    )
+    return session.exec(statement).one()
+
+
+def churn_distribution(session: Session) -> Dict[ChurnRisk, int]:
+    """Clientes por nivel de churn según su análisis más reciente."""
+    statement = (
+        select(CustomerInsight.churn_risk, func.count())
+        .where(CustomerInsight.id.in_(customer_insight_repository.latest_ids_subquery()))
+        .group_by(CustomerInsight.churn_risk)
+    )
+    return dict(session.exec(statement).all())
 
 
 def get_recent(session: Session, limit: int = 5) -> List[Customer]:

@@ -9,22 +9,39 @@
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 </head>
 <body class="min-h-screen bg-base-200">
+    {% set nav_links = [
+        ("/", "Dashboard", request.url.path == "/"),
+        ("/customers", "Clientes", request.url.path.startswith("/customers")),
+        ("/pipeline", "Pipeline", request.url.path.startswith("/pipeline")),
+        ("/tasks", "Mis tareas", request.url.path.startswith("/tasks")),
+    ] %}
     <div class="navbar bg-base-100 shadow-sm">
         <div class="flex-1">
             <a href="/" class="btn btn-ghost text-xl">CRM Inteligente</a>
         </div>
-        <div class="flex-none gap-1">
-            <a href="/" class="btn btn-ghost {{ 'btn-active' if request.url.path == '/' else '' }}">Dashboard</a>
-            <a href="/customers" class="btn btn-ghost {{ 'btn-active' if request.url.path.startswith('/customers') else '' }}">Clientes</a>
-            <a href="/pipeline" class="btn btn-ghost {{ 'btn-active' if request.url.path.startswith('/pipeline') else '' }}">Pipeline</a>
-            <a href="/tasks" class="btn btn-ghost {{ 'btn-active' if request.url.path.startswith('/tasks') else '' }}">Mis tareas</a>
+        <div class="flex-none gap-1 hidden md:flex">
+            {% for href, label, active in nav_links %}
+            <a href="{{ href }}" class="btn btn-ghost {{ 'btn-active' if active else '' }}">{{ label }}</a>
+            {% endfor %}
+        </div>
+        {# En pantallas chicas los links se agrupan en un menú desplegable. #}
+        <div class="dropdown dropdown-end md:hidden">
+            <div tabindex="0" role="button" class="btn btn-ghost btn-square" aria-label="Abrir menú">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </div>
+            <ul tabindex="0" class="menu dropdown-content bg-base-100 rounded-box shadow z-[50] mt-3 w-48 p-2">
+                {% for href, label, active in nav_links %}
+                <li><a href="{{ href }}" class="{{ 'active' if active else '' }}">{{ label }}</a></li>
+                {% endfor %}
+            </ul>
         </div>
     </div>
 
-    <main class="container mx-auto p-6">
+    <main class="container mx-auto p-4 sm:p-6">
         {% block content %}{% endblock %}
     </main>
 
+    {% include "partials/_toast.html" %}
     {% block scripts %}{% endblock %}
 </body>
 </html>

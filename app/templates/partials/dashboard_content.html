@@ -1,0 +1,156 @@
+{% from "partials/_deal_macros.html" import stage_badge %}
+{% set k = kpis %}
+
+{# --- KPIs ---------------------------------------------------------------- #}
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+    <div class="stat px-4 sm:px-6 bg-base-100 rounded-box shadow-md">
+        <div class="stat-title">Ingresos</div>
+        <div class="stat-value text-lg sm:text-2xl xl:text-3xl text-success">{{ k.revenue | money }}</div>
+        <div class="stat-desc whitespace-normal">{{ k.won_count }} deal{{ "s" if k.won_count != 1 }} ganado{{ "s" if k.won_count != 1 }}</div>
+    </div>
+    <div class="stat px-4 sm:px-6 bg-base-100 rounded-box shadow-md">
+        <div class="stat-title">Pipeline abierto</div>
+        <div class="stat-value text-lg sm:text-2xl xl:text-3xl text-primary">{{ k.pipeline_value | money }}</div>
+        <div class="stat-desc whitespace-normal" title="Suma de monto × probabilidad de los deals abiertos">
+            {{ k.open_deals }} deal{{ "s" if k.open_deals != 1 }} · ponderado {{ k.pipeline_weighted | money }}
+        </div>
+    </div>
+    <div class="stat px-4 sm:px-6 bg-base-100 rounded-box shadow-md">
+        <div class="stat-title">Clientes activos</div>
+        <div class="stat-value text-lg sm:text-2xl xl:text-3xl">
+            {{ k.active_customers }}<span class="text-base font-normal text-base-content/50"> / {{ k.total_customers }}</span>
+        </div>
+        <div class="stat-desc whitespace-normal" title="Con interacciones en los últimos 30 días o con un deal abierto">Contacto en 30 días o deal abierto</div>
+    </div>
+    <div class="stat px-4 sm:px-6 bg-base-100 rounded-box shadow-md">
+        <div class="stat-title">Conversión</div>
+        <div class="stat-value text-lg sm:text-2xl xl:text-3xl text-secondary">
+            {% if k.conversion_rate is not none %}{{ k.conversion_rate }} %{% else %}—{% endif %}
+        </div>
+        <div class="stat-desc whitespace-normal">
+            {% if k.closed_count %}{{ k.won_count }} ganados de {{ k.closed_count }} cerrados{% else %}Sin deals cerrados aún{% endif %}
+        </div>
+    </div>
+    <a href="/tasks" class="stat px-4 sm:px-6 bg-base-100 rounded-box shadow-md col-span-2 lg:col-span-1 hover:bg-base-200 transition-colors">
+        <div class="stat-title">Tareas pendientes</div>
+        <div class="stat-value text-lg sm:text-2xl xl:text-3xl {{ 'text-warning' if k.pending_tasks else '' }}">{{ k.pending_tasks }}</div>
+        <div class="stat-desc whitespace-normal {{ 'text-error font-semibold' if k.overdue_tasks else '' }}">
+            {% if k.overdue_tasks %}{{ k.overdue_tasks }} vencida{{ "s" if k.overdue_tasks != 1 }}{% else %}Ninguna vencida{% endif %}
+        </div>
+    </a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6 lg:items-start">
+    {# --- Resumen del pipeline por etapa --------------------------------- #}
+    <div class="card bg-base-100 shadow-md lg:col-span-3">
+        <div class="card-body">
+            <div class="flex justify-between items-center gap-2">
+                <h2 class="card-title">Pipeline por etapa</h2>
+                <a href="/pipeline" class="btn btn-ghost btn-xs">Ver pipeline &rarr;</a>
+            </div>
+            {% if pipeline_stages | sum(attribute="count") %}
+            <ul class="flex flex-col gap-4 mt-2">
+                {% for row in pipeline_stages %}
+                {% set pct = (row.total / pipeline_max * 100) | round(1) if pipeline_max else 0 %}
+                <li>
+                    <div class="flex justify-between items-center gap-2 flex-wrap">
+                        <div class="flex items-center gap-2">
+                            {{ stage_badge(row.stage) }}
+                            <span class="text-sm text-base-content/70">{{ row.count }} deal{{ "s" if row.count != 1 }}</span>
+                        </div>
+                        <span class="font-semibold tabular-nums">{{ row.total | money }}</span>
+                    </div>
+                    <div class="h-2 mt-1.5 rounded-full bg-base-200 overflow-hidden"
+                         role="img" aria-label="{{ row.label }}: {{ row.total | money }}">
+                        <div class="h-full rounded-full bg-primary/80 transition-all duration-500" style="width: {{ pct }}%"></div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="text-center py-8">
+                <p class="text-base-content/60 mb-3">Aún no hay deals en el pipeline.</p>
+                <a href="/pipeline" class="btn btn-primary btn-sm">Crear el primer deal</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# --- Actividad reciente: interacciones + deals ----------------------- #}
+    <div class="card bg-base-100 shadow-md lg:col-span-2">
+        <div class="card-body">
+            <h2 class="card-title">Actividad reciente</h2>
+            {% if recent_activity %}
+            <ul class="flex flex-col gap-1 mt-2">
+                {% for event in recent_activity %}
+                <li>
+                    <a href="/customers/{{ event.customer_id }}"
+                       class="flex gap-3 items-start rounded-box px-2 py-2 hover:bg-base-200 transition-colors">
+                        <span class="mt-1 h-2.5 w-2.5 rounded-full shrink-0 {{ 'bg-secondary' if event.kind == 'deal' else 'bg-primary' }}"
+                              aria-hidden="true"></span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex justify-between items-baseline gap-2">
+                                <span class="font-semibold truncate">{{ event.customer_name }}</span>
+                                <span class="text-xs text-base-content/60 whitespace-nowrap">{{ event.at.strftime("%d/%m %H:%M") }}</span>
+                            </div>
+                            <div class="flex items-center gap-2 mt-0.5 text-sm">
+                                {% if event.kind == "deal" %}
+                                <span class="badge badge-secondary badge-outline badge-sm whitespace-nowrap">{{ event.label }}</span>
+                                <span class="truncate">{{ event.text }}</span>
+                                {% else %}
+                                <span class="badge badge-outline badge-sm whitespace-nowrap">{{ event.label }}</span>
+                                <span class="truncate text-base-content/80">{{ event.text }}</span>
+                                {% endif %}
+                            </div>
+                            {% if event.kind == "deal" %}
+                            <div class="flex items-center gap-2 mt-1">
+                                {{ stage_badge(event.stage) }}
+                                <span class="text-xs tabular-nums text-base-content/70">{{ event.value | money }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-base-content/60 py-8 text-center">Aún no hay actividad registrada.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# --- Gráficos (Chart.js) ---------------------------------------------------- #}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="card bg-base-100 shadow-md lg:col-span-2">
+        <div class="card-body">
+            <h2 class="card-title">Interacciones · últimos 30 días</h2>
+            {% if charts.activity["values"] | sum %}
+            <div class="relative h-64">
+                <canvas id="chart-activity" role="img"
+                        aria-label="Interacciones registradas por día en los últimos 30 días"></canvas>
+            </div>
+            {% else %}
+            <p class="text-base-content/60 py-8 text-center">Sin interacciones en los últimos 30 días.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title">Riesgo de churn</h2>
+            {% if charts.churn["values"] | sum %}
+            <div class="relative h-56">
+                <canvas id="chart-churn" role="img"
+                        aria-label="Clientes por riesgo de churn: {% for label in charts.churn.labels %}{{ label }} {{ charts.churn['values'][loop.index0] }}{{ ', ' if not loop.last }}{% endfor %}"></canvas>
+            </div>
+            <p class="text-xs text-base-content/60">Según el análisis IA más reciente de cada cliente.</p>
+            {% else %}
+            <p class="text-base-content/60 py-8 text-center text-sm">
+                Aún no hay análisis predictivos. Genérelos con “Generar Insights” en la ficha de cada cliente.
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script type="application/json" id="dashboard-charts">{{ charts | tojson }}</script>

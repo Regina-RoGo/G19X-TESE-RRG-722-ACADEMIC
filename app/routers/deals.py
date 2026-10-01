@@ -1,10 +1,11 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.dependencies import get_current_user, require_admin
+from app.core.templating import toast
 from app.models.deal import DealStage
 from app.schemas.deal import DealCreate, DealRead, DealStageUpdate, DealUpdate
 from app.services import deal_service
@@ -54,10 +55,19 @@ def update_deal(
 def change_deal_stage(
     deal_id: int,
     data: DealStageUpdate,
+    request: Request,
+    response: Response,
     session: Session = Depends(get_session),
     current_user=Depends(get_current_user),
 ):
-    return deal_service.change_stage(session, deal_id, data.stage)
+    deal = deal_service.change_stage(session, deal_id, data.stage)
+    # El tablero Kanban llama a este endpoint vía HTMX: se le agrega el toast
+    # (HX-Trigger), que los demás clientes de la API simplemente ignoran.
+    if request.headers.get("HX-Request"):
+        label = deal_service.STAGE_LABELS[deal.stage]
+        level = "warning" if deal.stage == DealStage.CLOSED_LOST else "success"
+        toast(response, f"«{deal.title}» movido a {label}", level)
+    return deal
 
 
 @router.delete("/{deal_id}", status_code=status.HTTP_204_NO_CONTENT)

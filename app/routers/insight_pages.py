@@ -9,7 +9,7 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.dependencies import get_current_user_optional
-from app.core.templating import form_error, templates
+from app.core.templating import ai_error, form_error, templates, toast
 from app.models.customer_tag import TagSource
 from app.models.deal import DealStage
 from app.models.task import TaskPriority
@@ -96,14 +96,16 @@ def generate_insights_fragment(
         customer = customer_service.get_customer(session, customer_id)
         insight = ai_service.generate_insights(session, customer)
     except (ai_service.AIServiceError, HTTPException) as exc:
-        detail = exc.detail if isinstance(exc, HTTPException) else str(exc)
-        return templates.TemplateResponse(
-            request, "partials/insight_result.html", {"error": detail}
+        detail, level = ai_error(exc)
+        return toast(
+            templates.TemplateResponse(request, "partials/insight_result.html", {"error": detail}),
+            detail,
+            level,
         )
 
     # Además del resultado, se refrescan (out-of-band) las secciones de tags y
     # tareas, porque dependen de las sugerencias del nuevo análisis.
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request,
         "partials/insight_generate_response.html",
         {
@@ -113,14 +115,20 @@ def generate_insights_fragment(
             "oob": True,
         },
     )
+    return toast(response, "Análisis predictivo generado con IA")
 
 
 # --- Tags -------------------------------------------------------------------
 
 
-def _render_tags(request: Request, session: Session, customer_id: int, current_user: User):
-    return templates.TemplateResponse(
-        request, "partials/customer_tags.html", tags_context(session, customer_id, current_user)
+def _render_tags(
+    request: Request, session: Session, customer_id: int, current_user: User, message: str
+):
+    return toast(
+        templates.TemplateResponse(
+            request, "partials/customer_tags.html", tags_context(session, customer_id, current_user)
+        ),
+        message,
     )
 
 
@@ -137,10 +145,10 @@ def add_tag_fragment(
         return _redirect_to_login()
 
     try:
-        customer_tag_service.add_tag(session, customer_id, name, source)
+        tag = customer_tag_service.add_tag(session, customer_id, name, source)
     except HTTPException as exc:
         return form_error(request, exc.detail, "#tag-form-error")
-    return _render_tags(request, session, customer_id, current_user)
+    return _render_tags(request, session, customer_id, current_user, f"Tag «{tag.name}» aplicado")
 
 
 @router.delete("/fragments/customers/{customer_id}/tags/{tag_id}", response_class=HTMLResponse)
@@ -160,7 +168,7 @@ def remove_tag_fragment(
         customer_tag_service.remove_tag(session, customer_id, tag_id)
     except HTTPException as exc:
         return form_error(request, exc.detail, "#tag-form-error")
-    return _render_tags(request, session, customer_id, current_user)
+    return _render_tags(request, session, customer_id, current_user, "Tag quitado")
 
 
 # --- Tareas del cliente -----------------------------------------------------
@@ -207,6 +215,9 @@ def create_customer_task_fragment(
     except HTTPException as exc:
         return form_error(request, exc.detail, "#task-form-error")
 
-    return templates.TemplateResponse(
-        request, "partials/customer_tasks.html", tasks_context(session, customer_id, current_user)
+    return toast(
+        templates.TemplateResponse(
+            request, "partials/customer_tasks.html", tasks_context(session, customer_id, current_user)
+        ),
+        f"Tarea «{data.title}» creada",
     )

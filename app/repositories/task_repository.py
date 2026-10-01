@@ -53,6 +53,13 @@ def count_by_customer(session: Session, customer_id: int) -> int:
     return session.exec(statement).one()
 
 
+def count_pending(session: Session, overdue_before: Optional[date] = None) -> int:
+    statement = select(func.count()).select_from(Task).where(Task.status == TaskStatus.PENDING)
+    if overdue_before is not None:
+        statement = statement.where(Task.due_date < overdue_before)
+    return session.exec(statement).one()
+
+
 def update(session: Session, task: Task) -> Task:
     session.add(task)
     session.commit()

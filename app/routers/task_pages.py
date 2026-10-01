@@ -7,7 +7,7 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.dependencies import get_current_user_optional
-from app.core.templating import templates
+from app.core.templating import templates, toast
 from app.models.task import TaskPriority, TaskStatus
 from app.models.user import User
 from app.repositories import user_repository
@@ -114,12 +114,20 @@ def change_task_status_fragment(
             session, task_id, TaskUpdate(status=new_status), current_user
         )
     except HTTPException as exc:
-        return templates.TemplateResponse(
-            request,
-            "partials/task_row_error.html",
-            {"error": exc.detail, "show_customer": show_customer},
+        return toast(
+            templates.TemplateResponse(
+                request,
+                "partials/task_row_error.html",
+                {"error": exc.detail, "show_customer": show_customer},
+            ),
+            exc.detail,
+            "error",
         )
 
-    return templates.TemplateResponse(
-        request, "partials/task_row.html", {"task": task, "show_customer": show_customer}
+    message = "Tarea completada" if task.status == TaskStatus.DONE else "Tarea reabierta"
+    return toast(
+        templates.TemplateResponse(
+            request, "partials/task_row.html", {"task": task, "show_customer": show_customer}
+        ),
+        message,
     )

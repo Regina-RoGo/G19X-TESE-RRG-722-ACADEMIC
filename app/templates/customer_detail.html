@@ -152,6 +152,7 @@
                 hx-post="/fragments/customers/{{ customer.id }}/interactions"
                 hx-target="#interactions-list"
                 hx-swap="innerHTML"
+                hx-disabled-elt="find button[type='submit']"
                 hx-on::after-request="if(event.detail.successful) this.reset()"
             >
                 <div class="form-control mb-3">

@@ -1,4 +1,5 @@
-from typing import List, Optional
+from decimal import Decimal
+from typing import Dict, List, Optional
 
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, func, select
@@ -60,3 +61,28 @@ def update(session: Session, deal: Deal) -> Deal:
 def delete(session: Session, deal: Deal) -> None:
     session.delete(deal)
     session.commit()
+
+
+def stage_summary(session: Session) -> Dict[DealStage, dict]:
+    """Cantidad, monto total y monto ponderado por probabilidad de cada etapa."""
+    statement = select(
+        Deal.stage,
+        func.count(Deal.id),
+        func.coalesce(func.sum(Deal.value), 0),
+        func.coalesce(func.sum(Deal.value * Deal.probability / 100), 0),
+    ).group_by(Deal.stage)
+    return {
+        stage: {"count": count, "total": Decimal(total), "weighted": Decimal(weighted)}
+        for stage, count, total, weighted in session.exec(statement).all()
+    }
+
+
+def get_recent(session: Session, limit: int = 5) -> List[Deal]:
+    statement = (
+        select(Deal)
+        .options(selectinload(Deal.customer))
+        .order_by(Deal.updated_at.desc())
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+

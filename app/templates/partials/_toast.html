@@ -1,0 +1,82 @@
+{# Toasts globales (Fase 7). El backend los pide con el header
+   HX-Trigger: {"showToast": {"message": "...", "level": "success|error|warning|info"}}
+   (helper `toast()` en app/core/templating.py); el JS también los usa para
+   errores HTTP/red de cualquier request HTMX. #}
+<div id="toast-container" class="toast toast-bottom toast-end z-[1000] w-full max-w-sm sm:w-auto"
+     role="status" aria-live="polite"></div>
+
+{# Barra de progreso global mientras haya requests HTMX en curso. #}
+<progress id="htmx-progress" class="progress progress-primary fixed top-0 left-0 w-full h-1 rounded-none z-[1001] hidden"></progress>
+
+<script>
+(function () {
+    const container = document.getElementById("toast-container");
+    const progress = document.getElementById("htmx-progress");
+    const LEVELS = {
+        success: { css: "alert-success", duration: 3500,
+            icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>' },
+        error: { css: "alert-error", duration: 7000,
+            icon: '<path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>' },
+        warning: { css: "alert-warning", duration: 5500,
+            icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>' },
+        info: { css: "alert-info", duration: 4000,
+            icon: '<path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/>' },
+    };
+    const MAX_TOASTS = 4;
+
+    function dismiss(el) {
+        el.classList.add("opacity-0", "translate-x-4");
+        setTimeout(function () { el.remove(); }, 200);
+    }
+
+    window.showToast = function (message, level) {
+        const config = LEVELS[level] || LEVELS.info;
+        const el = document.createElement("div");
+        el.className = "alert " + config.css + " shadow-lg text-sm py-2 transition-all duration-200 cursor-pointer whitespace-normal";
+        el.setAttribute("role", level === "error" ? "alert" : "status");
+        el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-5 w-5 shrink-0">' + config.icon + "</svg><span></span>";
+        // textContent: el mensaje puede traer datos del usuario (títulos, tags).
+        el.querySelector("span").textContent = message;
+        el.title = "Clic para cerrar";
+        el.addEventListener("click", function () { dismiss(el); });
+        container.appendChild(el);
+        while (container.children.length > MAX_TOASTS) container.firstElementChild.remove();
+        setTimeout(function () { dismiss(el); }, config.duration);
+    };
+
+    document.body.addEventListener("showToast", function (evt) {
+        window.showToast(evt.detail.message, evt.detail.level);
+    });
+
+    // Errores HTTP sin manejo propio (404, 409, 422, 500...): HTMX no hace swap,
+    // así que el toast es la única señal visible para el usuario.
+    document.body.addEventListener("htmx:responseError", function (evt) {
+        const xhr = evt.detail.xhr;
+        let message = "Ocurrió un error inesperado. Intente nuevamente.";
+        if (xhr.status === 401) {
+            message = "Su sesión expiró. Vuelva a iniciar sesión.";
+        } else if (xhr.status === 403) {
+            message = "No tiene permisos para realizar esta acción.";
+        } else if (xhr.status === 422) {
+            message = "Revise los datos enviados.";
+        }
+        try {
+            const detail = JSON.parse(xhr.responseText).detail;
+            if (typeof detail === "string") message = detail;
+        } catch (e) { /* respuesta sin JSON: se usa el mensaje por status */ }
+        window.showToast(message, xhr.status >= 500 ? "error" : "warning");
+    });
+
+    document.body.addEventListener("htmx:sendError", function () {
+        window.showToast("No se pudo conectar con el servidor. Revise su conexión.", "error");
+    });
+
+    let pending = 0;
+    function setProgress(delta) {
+        pending = Math.max(0, pending + delta);
+        progress.classList.toggle("hidden", pending === 0);
+    }
+    document.body.addEventListener("htmx:beforeRequest", function () { setProgress(1); });
+    document.body.addEventListener("htmx:afterRequest", function () { setProgress(-1); });
+})();
+</script>

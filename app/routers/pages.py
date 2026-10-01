@@ -8,7 +8,7 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.dependencies import get_current_user_optional
-from app.core.templating import form_error, templates
+from app.core.templating import ai_error, form_error, templates, toast
 from app.models.customer_insight import ChurnRisk
 from app.models.deal import DealStage
 from app.models.user import User
@@ -47,6 +47,21 @@ def index(
         request,
         "index.html",
         {**dashboard_data, "current_user": current_user},
+    )
+
+
+@router.get("/fragments/dashboard", response_class=HTMLResponse)
+def dashboard_fragment(
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """KPIs, pipeline, gráficos y actividad: refresco periódico/manual vía HTMX."""
+    if current_user is None:
+        return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    return templates.TemplateResponse(
+        request, "partials/dashboard_content.html", dashboard_service.get_dashboard_data(session)
     )
 
 
@@ -200,8 +215,11 @@ def create_interaction_fragment(
     interaction_service.create_interaction(session, customer_id, data, current_user)
 
     interactions = interaction_service.list_interactions(session, customer_id)
-    return templates.TemplateResponse(
-        request, "partials/interactions_list.html", {"interactions": interactions}
+    return toast(
+        templates.TemplateResponse(
+            request, "partials/interactions_list.html", {"interactions": interactions}
+        ),
+        "Interacción registrada",
     )
 
 
@@ -219,13 +237,18 @@ def summarize_customer_fragment(
         customer = customer_service.get_customer(session, customer_id)
         summary = ai_service.generate_summary(session, customer)
     except (ai_service.AIServiceError, HTTPException) as exc:
-        detail = exc.detail if isinstance(exc, HTTPException) else str(exc)
-        return templates.TemplateResponse(
-            request, "partials/ai_summary_result.html", {"error": detail}
+        detail, level = ai_error(exc)
+        return toast(
+            templates.TemplateResponse(request, "partials/ai_summary_result.html", {"error": detail}),
+            detail,
+            level,
         )
 
-    return templates.TemplateResponse(
-        request, "partials/ai_summary_result.html", {"summary": summary}
+    return toast(
+        templates.TemplateResponse(
+            request, "partials/ai_summary_result.html", {"summary": summary}
+        ),
+        "Resumen ejecutivo generado con IA",
     )
 
 
@@ -306,8 +329,11 @@ def create_deal_fragment(
     if error:
         return form_error(request, error, "#deal-form-error")
 
-    return templates.TemplateResponse(
-        request, "partials/pipeline_board.html", {"columns": deal_service.get_pipeline(session)}
+    return toast(
+        templates.TemplateResponse(
+            request, "partials/pipeline_board.html", {"columns": deal_service.get_pipeline(session)}
+        ),
+        f"Deal «{title.strip()}» creado",
     )
 
 
@@ -330,8 +356,11 @@ def create_customer_deal_fragment(
         return form_error(request, error, "#customer-deal-form-error")
 
     deals = deal_service.list_deals(session, customer_id=customer_id)
-    return templates.TemplateResponse(
-        request, "partials/customer_deals_list.html", {"deals": deals}
+    return toast(
+        templates.TemplateResponse(
+            request, "partials/customer_deals_list.html", {"deals": deals}
+        ),
+        f"Deal «{title.strip()}» creado",
     )
 
 
@@ -349,11 +378,16 @@ def sales_suggestions_fragment(
         customer = customer_service.get_customer(session, customer_id)
         suggestion = ai_service.generate_sales_suggestions(session, customer)
     except (ai_service.AIServiceError, HTTPException) as exc:
-        detail = exc.detail if isinstance(exc, HTTPException) else str(exc)
-        return templates.TemplateResponse(
-            request, "partials/sales_suggestion_result.html", {"error": detail}
+        detail, level = ai_error(exc)
+        return toast(
+            templates.TemplateResponse(request, "partials/sales_suggestion_result.html", {"error": detail}),
+            detail,
+            level,
         )
 
-    return templates.TemplateResponse(
-        request, "partials/sales_suggestion_result.html", {"suggestion": suggestion}
+    return toast(
+        templates.TemplateResponse(
+            request, "partials/sales_suggestion_result.html", {"suggestion": suggestion}
+        ),
+        "Sugerencias de venta generadas con IA",
     )

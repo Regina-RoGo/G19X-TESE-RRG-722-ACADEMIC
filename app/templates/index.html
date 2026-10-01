@@ -3,68 +3,111 @@
 {% block title %}Dashboard - CRM Inteligente{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Dashboard</h1>
-
-<div class="stats shadow w-full bg-base-100 mb-6">
-    <div class="stat">
-        <div class="stat-title">Total de clientes</div>
-        <div class="stat-value text-primary">{{ total_customers }}</div>
+<div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+    <div>
+        <h1 class="text-2xl font-bold">Dashboard ejecutivo</h1>
+        <p class="text-sm text-base-content/60">
+            Hola, {{ current_user.full_name }} · <span id="dashboard-updated">actualizado recién</span>
+        </p>
     </div>
-    <div class="stat">
-        <div class="stat-title">Interacciones registradas</div>
-        <div class="stat-value text-secondary">{{ total_interactions }}</div>
-    </div>
-    <div class="stat">
-        <div class="stat-title">Resúmenes IA generados</div>
-        <div class="stat-value">{{ total_summaries }}</div>
-    </div>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="card bg-base-100 shadow-md lg:col-span-2">
-        <div class="card-body">
-            <h2 class="card-title">Actividad reciente</h2>
-            {% if recent_interactions %}
-            <div class="flex flex-col gap-3 mt-2">
-                {% for interaction in recent_interactions %}
-                <a href="/customers/{{ interaction.customer_id }}" class="border-l-4 border-primary/40 pl-3 py-1 hover:bg-base-200 rounded-r transition-colors">
-                    <div class="flex justify-between items-baseline flex-wrap gap-2">
-                        <span class="font-semibold">{{ interaction.customer.name }}</span>
-                        <span class="text-xs text-base-content/60">
-                            {{ interaction.occurred_at.strftime("%d/%m/%Y %H:%M") }}
-                        </span>
-                    </div>
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="badge badge-outline">{{ interaction.interaction_type.name }}</span>
-                        <p class="truncate text-sm text-base-content/80">{{ interaction.notes }}</p>
-                    </div>
-                </a>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="text-base-content/60">Aún no hay interacciones registradas.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="card bg-base-100 shadow-md lg:col-span-1">
-        <div class="card-body">
-            <div class="flex justify-between items-center">
-                <h2 class="card-title">Clientes recientes</h2>
-                <a href="/customers" class="btn btn-ghost btn-xs">Ver todos</a>
-            </div>
-            {% if recent_customers %}
-            <div class="flex flex-col gap-2 mt-2">
-                {% for customer in recent_customers %}
-                <a href="/customers/{{ customer.id }}" class="btn btn-outline btn-sm justify-start">
-                    {{ customer.name }}
-                </a>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="text-base-content/60">Aún no hay clientes registrados.</p>
-            {% endif %}
-        </div>
+    <div class="flex items-center gap-2">
+        <span id="dashboard-spinner" class="htmx-indicator loading loading-spinner loading-sm"></span>
+        <button class="btn btn-outline btn-sm"
+                hx-get="/fragments/dashboard"
+                hx-target="#dashboard-content"
+                hx-swap="innerHTML"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="this">
+            Actualizar
+        </button>
     </div>
 </div>
+
+{# Se refresca solo cada 60 s mientras la pestaña está visible, y al volver a ella. #}
+<div id="dashboard-content"
+     hx-get="/fragments/dashboard"
+     hx-trigger="every 60s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
+     hx-swap="innerHTML"
+     hx-indicator="#dashboard-spinner">
+    {% include "partials/dashboard_content.html" %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    (function () {
+        // Colores por rol: una sola serie (azul) para actividad; estados para el churn.
+        const COLORS = {
+            series: "#2a78d6",
+            churn: { Bajo: "#16a34a", Medio: "#d97706", Alto: "#dc2626" },
+            grid: "rgba(0, 0, 0, 0.06)",
+            text: "#52514e",
+        };
+        const charts = {};
+
+        Chart.defaults.color = COLORS.text;
+        Chart.defaults.font.family = "ui-sans-serif, system-ui, sans-serif";
+        Chart.defaults.plugins.legend.display = false;
+        Chart.defaults.maintainAspectRatio = false;
+
+        function draw(id, config) {
+            const canvas = document.getElementById(id);
+            if (charts[id]) charts[id].destroy();
+            if (canvas) charts[id] = new Chart(canvas, config);
+        }
+
+        function renderCharts() {
+            const source = document.getElementById("dashboard-charts");
+            if (!source) return;
+            const data = JSON.parse(source.textContent);
+            const axes = {
+                x: { grid: { display: false } },
+                y: { beginAtZero: true, grid: { color: COLORS.grid }, ticks: { precision: 0 } },
+            };
+
+            // Conteos diarios discretos: barras (una línea suavizada inventaría forma entre días).
+            draw("chart-activity", {
+                type: "bar",
+                data: {
+                    labels: data.activity.labels,
+                    datasets: [{
+                        label: "Interacciones",
+                        data: data.activity.values,
+                        backgroundColor: COLORS.series,
+                        borderRadius: 4,
+                        maxBarThickness: 18,
+                    }],
+                },
+                options: {
+                    interaction: { mode: "index", intersect: false },
+                    scales: { ...axes, x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } } },
+                },
+            });
+
+            draw("chart-churn", {
+                type: "bar",
+                data: {
+                    labels: data.churn.labels,
+                    datasets: [{
+                        label: "Clientes",
+                        data: data.churn.values,
+                        backgroundColor: data.churn.labels.map(function (l) { return COLORS.churn[l]; }),
+                        borderRadius: 4,
+                        maxBarThickness: 48,
+                    }],
+                },
+                options: { scales: axes },
+            });
+
+            const stamp = document.getElementById("dashboard-updated");
+            // En UTC, igual que el resto de las fechas que muestra la app.
+            if (stamp) stamp.textContent = "actualizado " + new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }) + " UTC";
+        }
+
+        // Primer render y cada vez que HTMX reemplaza el contenido del dashboard.
+        renderCharts();
+        document.getElementById("dashboard-content").addEventListener("htmx:afterSettle", renderCharts);
+    })();
+</script>
 {% endblock %}
