@@ -6,3 +6,10 @@ venv/
 *.db
 .DS_Store
 .pytest_cache/
+
+# Documentación privada (no versionar)
+DOCUMENTACION_PROYECTO.md
+MANUAL_USUARIO.md
+*.zip
+CLAUDE.md
+

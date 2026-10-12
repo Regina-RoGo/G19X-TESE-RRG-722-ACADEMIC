@@ -11,12 +11,20 @@ class CustomerBase(BaseModel):
     company: Optional[str] = None
 
 
+CUSTOMER_EXAMPLE = {
+    "name": "Mariana Ortega",
+    "email": "mortega@logisticaandina.com",
+    "phone": "+54 9 11 5555-1234",
+    "company": "Logística Andina S.A.",
+}
+
+
 class CustomerCreate(CustomerBase):
-    pass
+    model_config = ConfigDict(json_schema_extra={"examples": [CUSTOMER_EXAMPLE]})
 
 
 class CustomerUpdate(CustomerBase):
-    pass
+    model_config = ConfigDict(json_schema_extra={"examples": [CUSTOMER_EXAMPLE]})
 
 
 class CustomerRead(CustomerBase):

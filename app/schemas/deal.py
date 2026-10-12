@@ -8,6 +8,20 @@ from app.models.deal import DealStage
 
 
 class DealCreate(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "title": "Ampliación a sucursales",
+                    "value": "15000.00",
+                    "stage": "PROPOSAL_SENT",
+                    "probability": 60,
+                    "customer_id": 5,
+                }
+            ]
+        }
+    )
+
     title: str = Field(min_length=1, max_length=200)
     value: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=2)
     stage: DealStage = DealStage.PROSPECT
@@ -18,6 +32,8 @@ class DealCreate(BaseModel):
 class DealUpdate(BaseModel):
     """Actualización parcial: solo se modifican los campos enviados."""
 
+    model_config = ConfigDict(json_schema_extra={"examples": [{"value": "18000.00", "probability": 70}]})
+
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     value: Optional[Decimal] = Field(default=None, ge=0, max_digits=12, decimal_places=2)
     stage: Optional[DealStage] = None
@@ -25,6 +41,8 @@ class DealUpdate(BaseModel):
 
 
 class DealStageUpdate(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"examples": [{"stage": "CLOSED_WON"}]})
+
     stage: DealStage
 
 

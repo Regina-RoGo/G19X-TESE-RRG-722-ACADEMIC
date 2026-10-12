@@ -7,6 +7,20 @@ from app.models.task import TaskPriority, TaskStatus
 
 
 class TaskCreate(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "title": "Llamar para negociar condiciones de pago",
+                    "description": "Proponer pago en dos cuotas.",
+                    "priority": "HIGH",
+                    "due_date": "2026-10-10",
+                    "customer_id": 5,
+                }
+            ]
+        }
+    )
+
     title: str = Field(min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, max_length=2000)
     priority: TaskPriority = TaskPriority.MEDIUM
@@ -19,6 +33,8 @@ class TaskCreate(BaseModel):
 
 class TaskUpdate(BaseModel):
     """Actualización parcial: solo se modifican los campos enviados."""
+
+    model_config = ConfigDict(json_schema_extra={"examples": [{"status": "DONE"}]})
 
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, max_length=2000)

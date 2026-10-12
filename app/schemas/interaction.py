@@ -4,6 +4,17 @@ from pydantic import BaseModel, ConfigDict
 
 
 class InteractionCreate(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "notes": "Demo del sistema; piden propuesta con integración a facturación.",
+                    "interaction_type_id": 3,
+                }
+            ]
+        }
+    )
+
     notes: str
     interaction_type_id: int
 

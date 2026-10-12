@@ -6,6 +6,8 @@ from app.models.customer_tag import TagSource
 
 
 class CustomerTagCreate(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"examples": [{"name": "alto valor", "source": "MANUAL"}]})
+
     name: str = Field(min_length=1, max_length=40)
     source: TagSource = TagSource.MANUAL
 

@@ -1,21 +1,41 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Response, status
+from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.database import get_session
 from app.core.dependencies import COOKIE_NAME
+from app.schemas.common import error_responses
 from app.services import auth_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-@router.post("/login")
+class LoginResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"message": "Login exitoso", "role": "comercial"}]}
+    )
+
+    message: str
+    role: str
+
+
+@router.post(
+    "/login",
+    response_model=LoginResponse,
+    summary="Iniciar sesión",
+    responses=error_responses(401),
+)
 def login(
     response: Response,
-    email: str = Form(...),
+    email: str = Form(..., examples=["admin@crm.local"]),
     password: str = Form(...),
     session: Session = Depends(get_session),
 ) -> dict:
+    """Valida email y contraseña (formulario) y setea la cookie HttpOnly `access_token` con el JWT.
+
+    Credenciales inválidas → 401 con un mensaje genérico (no revela si el email existe).
+    """
     try:
         user = auth_service.authenticate(session, email, password)
     except auth_service.InvalidCredentialsError:
