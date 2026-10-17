@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Response, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session
 
@@ -56,3 +57,18 @@ def login(
     )
 
     return {"message": "Login exitoso", "role": user.role.value}
+
+
+@router.post("/logout", summary="Cerrar sesión (API)")
+def logout_api(response: Response) -> dict:
+    """Borra la cookie de sesión en peticiones API."""
+    response.delete_cookie(key=COOKIE_NAME)
+    return {"message": "Sesión cerrada exitosamente"}
+
+
+@router.get("/logout", include_in_schema=False)
+def logout_redirect():
+    """Cierra la sesión y redirige a la página de login."""
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie(key=COOKIE_NAME)
+    return response

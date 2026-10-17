@@ -19,11 +19,23 @@
         <div class="flex-1">
             <a href="/" class="btn btn-ghost text-xl">CRM Inteligente</a>
         </div>
-        <div class="flex-none gap-1 hidden md:flex">
+        
+        <div class="flex-none gap-2 hidden md:flex items-center">
             {% for href, label, active in nav_links %}
             <a href="{{ href }}" class="btn btn-ghost {{ 'btn-active' if active else '' }}">{{ label }}</a>
             {% endfor %}
+
+            {# Badge de Rol y Botón de Logout #}
+            {% if current_user %}
+                <span class="badge {{ 'badge-primary' if current_user.role.value == 'admin' else 'badge-ghost' }} capitalize font-medium px-3 py-2">
+                    {{ current_user.role.value }}
+                </span>
+            {% endif %}
+            <a href="/api/auth/logout" class="btn btn-outline btn-error btn-sm ml-2">
+                Cerrar sesión
+            </a>
         </div>
+
         {# En pantallas chicas los links se agrupan en un menú desplegable. #}
         <div class="dropdown dropdown-end md:hidden">
             <div tabindex="0" role="button" class="btn btn-ghost btn-square" aria-label="Abrir menú">
@@ -33,6 +45,10 @@
                 {% for href, label, active in nav_links %}
                 <li><a href="{{ href }}" class="{{ 'active' if active else '' }}">{{ label }}</a></li>
                 {% endfor %}
+                <div class="divider my-1"></div>
+                <li>
+                    <a href="/api/auth/logout" class="text-error font-semibold">Cerrar sesión</a>
+                </li>
             </ul>
         </div>
     </div>
