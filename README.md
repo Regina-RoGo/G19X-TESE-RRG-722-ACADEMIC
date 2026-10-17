@@ -23,7 +23,7 @@ Plataforma web de gestión de relaciones con clientes (CRM) que integra Intelige
 ## Configuración
 
 Copia `.env.example` a `.env` y llena los valores (los reales están en
-«Accesos de prueba», en Mis documentos).
+«Accesos de prueba», en Mis documentos, llamado "Este es el .env").
 
 ## Cómo instalarlo y ejecutarlo
 
@@ -39,8 +39,16 @@ Comercial: comercial@crm.local
 
 ## Lo que todavía no funciona
 
-La pantalla para dar de alta/crear nuevos usuarios directamente desde la interfaz web (se gestionan vía backend/script).
+La pantalla para dar de alta/crear nuevos usuarios directamente desde la interfaz web (se gestionan vía backend/script). 
 
-El botón explícito para cerrar sesión (se recomienda cerrar la pestaña o esperar la expiración de la cookie de sesión).
+## Avisos generales:
 
-La diferencia marcada entre admin/comercial. 
+Toda documentación se encuentra ya cargada en la plataforma TODOAcademy en documentación técnica para mayor comodidad y seguridad. 
+
+Este proyecto integra Google Gemini API para potenciar el análisis comercial predictivo y generativo:
+
+Resumen Ejecutivo: Síntesis automática del perfil del cliente e historial de interacciones.
+Sugerencias de Venta: Recomendaciones accionables para el equipo comercial.
+Lead Scoring & Churn: Calificación automática de probabilidad de cierre y riesgo de cancelación (escala 0-100).
+
+(Asimismo, se utilizaron herramientas de IA conversacional como asistentes de codificación -Claude Code- para la aceleración en la maquetación de plantillas, estructuración de esquemas y refactorización del código).
