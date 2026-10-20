@@ -27,9 +27,22 @@ Copia `.env.example` a `.env` y llena los valores (los reales están en
 
 ## Cómo instalarlo y ejecutarlo
 
-docker compose up --build -d
+1. Clonar el repositorio y levantar los servicios con Docker:
+   ```bash
+   docker compose up --build -d
+   ```
 
-Se abre en http://localhost:8000
+2. Ejecutar la migración inicial / seed de datos de prueba:
+   ```bash
+   docker compose exec app python -m app.seed
+   ```
+
+3. Ejecutar la suite de pruebas unitarias:
+   ```bash
+   docker compose exec app pytest
+   ```
+   
+4. Abrir en el navegador: http://localhost:8000
 
 ## Usuario de prueba
 
@@ -52,3 +65,22 @@ Sugerencias de Venta: Recomendaciones accionables para el equipo comercial.
 Lead Scoring & Churn: Calificación automática de probabilidad de cierre y riesgo de cancelación (escala 0-100).
 
 (Asimismo, se utilizaron herramientas de IA conversacional como asistentes de codificación -Claude Code- para la aceleración en la maquetación de plantillas, estructuración de esquemas y refactorización del código).
+
+## Nota sobre los contribuidores
+
+Se aclara que las dos cuentas que aparecen registradas como contribuidores en este repositorio pertenecen a la misma persona. Esto se debe a que Git está configurado con dos direcciones de correo electrónico diferentes, por lo que algunos de los commits aparecen asociados a una cuenta distinta. Sin embargo, todas las contribuciones corresponden a la misma desarrolladora: Regina Rodríguez. 
+
+## Módulos y Rutas Principales
+
+| Módulo | Pantalla (Interfaz Web) | Endpoint Principal (API) |
+| :--- | :--- | :--- |
+| **Dashboard** | `/` | `/api/dashboard` |
+| **Clientes** | `/customers` | `/api/customers` |
+| **Interacciones** | Dentro de cliente | `/api/interactions` |
+| **Pipeline Kanban** | `/pipeline` | `/api/deals` |
+| **Tareas** | `/tasks` | `/api/tasks` |
+| **IA (Gemini)** | Dentro de cliente (`/customers/{id}`) | `/api/customers/{id}/ai-summary` |
+| **Documentación API** | — | `http://localhost:8000/docs` |
+
+> **Nota sobre las funciones de IA:** Para habilitar las capacidades predictivas y de análisis es necesario configurar una clave válida en la variable `GEMINI_API_KEY` dentro del archivo `.env`. Si no se proporciona una clave, el sistema responderá con un error controlado (502 / AIServiceError) sin interrumpir la estabilidad de la aplicación.
+
