@@ -1,6 +1,6 @@
 # Desarrollo de una Plataforma Inteligente de CRM con Inteligencia Artificial 
 
-**Alumno:** Regina Rodríguez Gómez · **Matrícula:** G19X-TESE-RRG-722-ACADEMIC
+**Alumna:** Regina Rodríguez Gómez · **Matrícula:** G19X-TESE-RRG-722-ACADEMIC
 **Institución:** Tecnológico de Estudios Superiores de Ecatepec
 
 ## Qué hace
@@ -32,14 +32,14 @@ Copia `.env.example` a `.env` y llena los valores (los reales están en
    docker compose up --build -d
    ```
 
-2. Ejecutar la migración inicial / seed de datos de prueba:
+2. Carga de datos de prueba (seed):
    ```bash
    docker compose exec app python -m app.seed
    ```
 
-3. Ejecutar la suite de pruebas unitarias:
+3. Ejecutar la suite de pruebas unitarias (4 pruebas automatizadas que validan reglas del pipeline, protección de rutas, RBAC y control de sesión)::
    ```bash
-   docker compose exec app pytest
+   docker compose exec app python -m pytest
    ```
    
 4. Abrir en el navegador: http://localhost:8000
